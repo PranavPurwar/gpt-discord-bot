@@ -60,30 +60,30 @@ async def on_ready():
 @discord.app_commands.checks.bot_has_permissions(send_messages=True)
 @discord.app_commands.checks.bot_has_permissions(view_channel=True)
 @discord.app_commands.checks.bot_has_permissions(manage_threads=True)
-async def chat_command(int: discord.Interaction, message: str):
+async def chat_command(interaction: discord.Interaction, message: str):
     try:
         # only support creating thread in text channel
-        if not isinstance(int.channel, discord.TextChannel):
+        if not isinstance(interaction.channel, discord.TextChannel):
             return
 
         # block servers not in allow list
-        if should_block(guild=int.guild):
+        if should_block(guild=interaction.guild):
             return
 
-        user = int.user
+        user = interaction.user
         logger.info(f"Chat command by {user} {message[:20]}")
         try:
             # moderate the message
-            flagged_str, blocked_str = moderate_message(message=message, user=user)
+            flagged_str, blocked_str = moderate_message(message=message, user=user.name)
             await send_moderation_blocked_message(
-                guild=int.guild,
-                user=user,
+                guild=interaction.guild,
+                user=user.name,
                 blocked_str=blocked_str,
                 message=message,
             )
             if len(blocked_str) > 0:
                 # message was blocked
-                await int.response.send_message(
+                await interaction.response.send_message(
                     f"Your prompt has been blocked by moderation.\n{message}",
                     ephemeral=True,
                 )
@@ -100,11 +100,11 @@ async def chat_command(int: discord.Interaction, message: str):
                 embed.color = discord.Color.yellow()
                 embed.title = "⚠️ This prompt was flagged by moderation."
 
-            await int.response.send_message(embed=embed)
-            response = await int.original_response()
+            await interaction.response.send_message(embed=embed)
+            response = await interaction.original_response()
 
             await send_moderation_flagged_message(
-                guild=int.guild,
+                guild=interaction.guild,
                 user=user,
                 flagged_str=flagged_str,
                 message=message,
@@ -112,7 +112,7 @@ async def chat_command(int: discord.Interaction, message: str):
             )
         except Exception as e:
             logger.exception(e)
-            await int.response.send_message(
+            await interaction.response.send_message(
                 f"Failed to start chat {str(e)}", ephemeral=True
             )
             return
@@ -136,7 +136,7 @@ async def chat_command(int: discord.Interaction, message: str):
             )
     except Exception as e:
         logger.exception(e)
-        await int.response.send_message(
+        await interaction.response.send_message(
             f"Failed to start chat {str(e)}", ephemeral=True
         )
 
@@ -263,5 +263,4 @@ async def on_message(message: DiscordMessage):
     except Exception as e:
         logger.exception(e)
 
-
-client.run(DISCORD_BOT_TOKEN)
+client.run("MTA2MDg5NzI0MDMwNDA2MjQ3NA.Gw54y3.tcP6TkK-G-RGcQVqj3Ki07YGtzw4gpE6ssCI_Y")
