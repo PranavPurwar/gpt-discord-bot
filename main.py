@@ -242,9 +242,14 @@ async def on_message(message: DiscordMessage):
 
         # generate the response
         async with thread.typing():
-            await generate_completion_response(
+            response_data = await generate_completion_response(
                 messages=channel_messages, user=message.author.name
             )
+
+        await process_response(
+            user=message.author, thread=thread, response_data=response_data
+        )
+
 
     except Exception as e:
         logger.exception(e)
