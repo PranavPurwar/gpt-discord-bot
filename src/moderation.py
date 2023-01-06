@@ -27,7 +27,7 @@ def moderate_message(
         if score > MODERATION_VALUES_FOR_FLAGGED.get(category, 1.0):
             flagged_str += f"({category}: {score})"
             logger.info(f"flagged {user} {category} {score}")
-    return (flagged_str, blocked_str)
+    return flagged_str, blocked_str
 
 
 async def fetch_moderation_channel(

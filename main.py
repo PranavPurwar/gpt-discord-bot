@@ -6,7 +6,7 @@ from src.constants import (
     BOT_INVITE_URL,
     DISCORD_BOT_TOKEN,
     EXAMPLE_CONVOS,
-    ACTIVATE_THREAD_PREFX,
+    ACTIVATE_THREAD_PREFIX,
     MAX_THREAD_MESSAGES,
     SECONDS_DELAY_RECEIVING_MSG,
 )
@@ -71,7 +71,7 @@ async def chat_command(interaction: discord.Interaction, message: str):
             return
 
         user = interaction.user
-        logger.info(f"Chat command by {user} {message[:20]}")
+        logger.debug(f"Chat command by {user} {message[:20]}")
         try:
             # moderate the message
             flagged_str, blocked_str = moderate_message(message=message, user=user.name)
@@ -90,14 +90,14 @@ async def chat_command(interaction: discord.Interaction, message: str):
                 return
 
             embed = discord.Embed(
-                description=f"<@{user.id}> wants to chat! 🤖💬",
+                description=f"<@{user.id}> started a chat.",
                 color=discord.Color.green(),
             )
             embed.add_field(name=user.name, value=message)
 
             if len(flagged_str) > 0:
                 # message was flagged
-                embed.color = discord.Color.yellow()
+                embed.colour = discord.Color.yellow()
                 embed.title = "⚠️ This prompt was flagged by moderation."
 
             await interaction.response.send_message(embed=embed)
@@ -105,7 +105,7 @@ async def chat_command(interaction: discord.Interaction, message: str):
 
             await send_moderation_flagged_message(
                 guild=interaction.guild,
-                user=user,
+                user=user.name,
                 flagged_str=flagged_str,
                 message=message,
                 url=response.jump_url,
@@ -119,7 +119,7 @@ async def chat_command(interaction: discord.Interaction, message: str):
 
         # create the thread
         thread = await response.create_thread(
-            name=f"{ACTIVATE_THREAD_PREFX} {user.name[:20]} - {message[:30]}",
+            name=f"{ACTIVATE_THREAD_PREFIX} {user.name[:20]} - {message[:30]}",
             slowmode_delay=1,
             reason="gpt-bot",
             auto_archive_duration=60,
@@ -128,11 +128,11 @@ async def chat_command(interaction: discord.Interaction, message: str):
             # fetch completion
             messages = [Message(user=user.name, text=message)]
             response_data = await generate_completion_response(
-                messages=messages, user=user
+                messages=messages, user=user.name
             )
             # send the result
             await process_response(
-                user=user, thread=thread, response_data=response_data
+                user=user.name, thread=thread, response_data=response_data
             )
     except Exception as e:
         logger.exception(e)
@@ -165,9 +165,9 @@ async def on_message(message: DiscordMessage):
 
         # ignore threads that are archived locked or title is not what we want
         if (
-            thread.archived
-            or thread.locked
-            or not thread.name.startswith(ACTIVATE_THREAD_PREFX)
+                thread.archived
+                or thread.locked
+                or not thread.name.startswith(ACTIVATE_THREAD_PREFIX)
         ):
             # ignore this thread
             return
@@ -179,14 +179,9 @@ async def on_message(message: DiscordMessage):
 
         # moderate the message
         flagged_str, blocked_str = moderate_message(
-            message=message.content, user=message.author
+            message=message.content, user=message.author.name
         )
-        await send_moderation_blocked_message(
-            guild=message.guild,
-            user=message.author,
-            blocked_str=blocked_str,
-            message=message.content,
-        )
+
         if len(blocked_str) > 0:
             try:
                 await message.delete()
@@ -197,21 +192,16 @@ async def on_message(message: DiscordMessage):
                     )
                 )
                 return
-            except Exception as e:
+            except PermissionError:
                 await thread.send(
                     embed=discord.Embed(
-                        description=f"❌ **{message.author}'s message has been blocked by moderation but could not be deleted. Missing Manage Messages permission in this Channel.**",
+                        description=f"❌ **{message.author}'s message has been blocked by moderation but could not be "
+                                    f"deleted. Missing Manage Messages permission in this Channel.**",
                         color=discord.Color.red(),
                     )
                 )
                 return
-        await send_moderation_flagged_message(
-            guild=message.guild,
-            user=message.author,
-            flagged_str=flagged_str,
-            message=message.content,
-            url=message.jump_url,
-        )
+
         if len(flagged_str) > 0:
             await thread.send(
                 embed=discord.Embed(
@@ -224,9 +214,9 @@ async def on_message(message: DiscordMessage):
         if SECONDS_DELAY_RECEIVING_MSG > 0:
             await asyncio.sleep(SECONDS_DELAY_RECEIVING_MSG)
             if is_last_message_stale(
-                interaction_message=message,
-                last_message=thread.last_message,
-                bot_id=client.user.id,
+                    interaction_message=message,
+                    last_message=thread.last_message,
+                    bot_id=str(client.user.id),
             ):
                 # there is another message, so ignore this one
                 return
@@ -234,6 +224,14 @@ async def on_message(message: DiscordMessage):
         logger.info(
             f"Thread message to process - {message.author}: {message.content[:50]} - {thread.name} {thread.jump_url}"
         )
+
+        if is_last_message_stale(
+                interaction_message=message,
+                last_message=thread.last_message,
+                bot_id=str(client.user.id),
+        ):
+            # there is another message and its not from us, so ignore this response
+            return
 
         channel_messages = [
             discord_message_to_message(message)
@@ -244,23 +242,12 @@ async def on_message(message: DiscordMessage):
 
         # generate the response
         async with thread.typing():
-            response_data = await generate_completion_response(
-                messages=channel_messages, user=message.author
+            await generate_completion_response(
+                messages=channel_messages, user=message.author.name
             )
 
-        if is_last_message_stale(
-            interaction_message=message,
-            last_message=thread.last_message,
-            bot_id=client.user.id,
-        ):
-            # there is another message and its not from us, so ignore this response
-            return
-
-        # send response
-        await process_response(
-            user=message.author, thread=thread, response_data=response_data
-        )
     except Exception as e:
         logger.exception(e)
 
-client.run("MTA2MDg5NzI0MDMwNDA2MjQ3NA.Gw54y3.tcP6TkK-G-RGcQVqj3Ki07YGtzw4gpE6ssCI_Y")
+
+client.run(DISCORD_BOT_TOKEN)

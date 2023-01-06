@@ -33,8 +33,10 @@ for s in server_channels:
     values = s.split(":")
     SERVER_TO_MODERATION_CHANNEL[int(values[0])] = int(values[1])
 
-# Send Messages, Create Public Threads, Send Messages in Threads, Manage Messages, Manage Threads, Read Message History, Use Slash Command
-BOT_INVITE_URL = f"https://discord.com/api/oauth2/authorize?client_id={DISCORD_CLIENT_ID}&permissions=328565073920&scope=bot"
+# Send Messages, Create Public Threads, Send Messages in Threads, Manage Messages, Manage Threads,
+# Read Message History, Use Slash Command
+BOT_INVITE_URL = f"https://discord.com/api/oauth2/authorize?client_id={DISCORD_CLIENT_ID}&permissions=328565073920" \
+                 "&scope=bot"
 
 MODERATION_VALUES_FOR_BLOCKED = {
     "hate": 0.5,
@@ -47,9 +49,9 @@ MODERATION_VALUES_FOR_BLOCKED = {
 }
 
 MODERATION_VALUES_FOR_FLAGGED = {
-    "hate": 0.4,
+    "hate": 1,
     "hate/threatening": 0.05,
-    "self-harm": 0.1,
+    "self-harm": 0.5,
     "sexual": 0.3,
     "sexual/minors": 0.1,
     "violence": 0.1,
@@ -57,10 +59,10 @@ MODERATION_VALUES_FOR_FLAGGED = {
 }
 
 SECONDS_DELAY_RECEIVING_MSG = (
-    3  # give a delay for the bot to respond so it can catch multiple messages
+    2  # give a delay for the bot to respond so it can catch multiple messages
 )
-MAX_THREAD_MESSAGES = 200
-ACTIVATE_THREAD_PREFX = "💬✅"
+MAX_THREAD_MESSAGES = 500
+ACTIVATE_THREAD_PREFIX = "💬✅"
 INACTIVATE_THREAD_PREFIX = "💬❌"
 MAX_CHARS_PER_REPLY_MSG = (
     1500  # discord has a 2k limit, we just break message into 1.5k

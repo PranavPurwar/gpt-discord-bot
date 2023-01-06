@@ -10,7 +10,7 @@ from src.constants import (
 )
 import discord
 from src.base import Message, Prompt, Conversation
-from src.utils import split_into_shorter_messages, close_thread, logger
+from src.utils import split_into_shorter_messages, logger
 from src.moderation import (
     send_moderation_flagged_message,
     send_moderation_blocked_message,
@@ -40,6 +40,7 @@ async def generate_completion_response(
     messages: List[Message], user: str
 ) -> CompletionData:
     try:
+        print("generate_completion")
         prompt = Prompt(
             header=Message(
                 "System", f"Instructions for {MY_BOT_NAME}: {BOT_INSTRUCTIONS}"
@@ -47,15 +48,19 @@ async def generate_completion_response(
             examples=MY_BOT_EXAMPLE_CONVOS,
             convo=Conversation(messages + [Message(MY_BOT_NAME)]),
         )
+        logger.debug("render prompt")
         rendered = prompt.render()
+        logger.debug("create completion")
         response = openai.Completion.create(
-            engine="text-davinci-003",
+            engine="text-davinci-001",
             prompt=rendered,
-            temperature=1.0,
-            top_p=0.9,
+            temperature=0.9,
             max_tokens=512,
+            n=1,
+            user=user,
             stop=["<|endoftext|>"],
         )
+        logger.debug("response")
         reply = response.choices[0].text.strip()
         if reply:
             flagged_str, blocked_str = moderate_message(
@@ -138,6 +143,7 @@ async def process_response(
             blocked_str=status_text,
             message=reply_text,
         )
+        print('send')
 
         await thread.send(
             embed=discord.Embed(
@@ -146,7 +152,12 @@ async def process_response(
             )
         )
     elif status is CompletionResult.TOO_LONG:
-        await close_thread(thread)
+        await thread.send(
+            embed=discord.Embed(
+                description="The response length is too much.",
+                color=discord.Color.yellow()
+            )
+        )
     elif status is CompletionResult.INVALID_REQUEST:
         await thread.send(
             embed=discord.Embed(
