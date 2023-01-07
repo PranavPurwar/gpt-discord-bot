@@ -26,6 +26,15 @@ from src.moderation import (
     send_moderation_blocked_message,
     send_moderation_flagged_message,
 )
+from flask import Flask
+
+app = Flask(__name__)
+
+
+@app.route('/')
+def main():
+    return 'ChatGPT'
+
 
 logging.basicConfig(
     format="[%(asctime)s] [%(filename)s:%(lineno)d] %(message)s", level=logging.INFO
@@ -259,5 +268,6 @@ async def on_message(message: DiscordMessage):
     except Exception as e:
         logger.exception(e)
 
+app.run(host='0.0.0.0', debug=False)
 
 client.run(DISCORD_BOT_TOKEN)
