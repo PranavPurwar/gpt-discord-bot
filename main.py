@@ -1,3 +1,5 @@
+import threading
+
 import discord
 import openai.error
 from discord import Message as DiscordMessage
@@ -268,6 +270,10 @@ async def on_message(message: DiscordMessage):
     except Exception as e:
         logger.exception(e)
 
-app.run(host='0.0.0.0', debug=False)
 
+def start_server():
+    app.run(host='0.0.0.0', port=1234, debug=False)
+
+
+threading.Thread(target=start_server).start()
 client.run(DISCORD_BOT_TOKEN)
