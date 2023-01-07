@@ -2,15 +2,18 @@ from src.constants import (
     SERVER_TO_MODERATION_CHANNEL,
     MODERATION_VALUES_FOR_BLOCKED,
     MODERATION_VALUES_FOR_FLAGGED,
+    OPENAI_API_KEY
 )
 import openai
 from typing import Optional, Tuple
 import discord
 from src.utils import logger
 
+openai.api_key = OPENAI_API_KEY
+
 
 def moderate_message(
-    message: str, user: str
+        message: str, user: str
 ) -> Tuple[str, str]:  # [flagged_str, blocked_str]
     moderation_response = openai.Moderation.create(
         input=message, model="text-moderation-latest"
@@ -31,7 +34,7 @@ def moderate_message(
 
 
 async def fetch_moderation_channel(
-    guild: Optional[discord.Guild],
+        guild: Optional[discord.Guild],
 ) -> Optional[discord.abc.GuildChannel]:
     if not guild or not guild.id:
         return None
@@ -43,11 +46,11 @@ async def fetch_moderation_channel(
 
 
 async def send_moderation_flagged_message(
-    guild: Optional[discord.Guild],
-    user: str,
-    flagged_str: Optional[str],
-    message: Optional[str],
-    url: Optional[str],
+        guild: Optional[discord.Guild],
+        user: str,
+        flagged_str: Optional[str],
+        message: Optional[str],
+        url: Optional[str],
 ):
     if guild and flagged_str and len(flagged_str) > 0:
         moderation_channel = await fetch_moderation_channel(guild=guild)
@@ -59,10 +62,10 @@ async def send_moderation_flagged_message(
 
 
 async def send_moderation_blocked_message(
-    guild: Optional[discord.Guild],
-    user: str,
-    blocked_str: Optional[str],
-    message: Optional[str],
+        guild: Optional[discord.Guild],
+        user: str,
+        blocked_str: Optional[str],
+        message: Optional[str],
 ):
     if guild and blocked_str and len(blocked_str) > 0:
         moderation_channel = await fetch_moderation_channel(guild=guild)

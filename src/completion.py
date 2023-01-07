@@ -10,7 +10,7 @@ from src.constants import (
 )
 import discord
 from src.base import Message, Prompt, Conversation
-from src.utils import split_into_shorter_messages, logger
+from src.utils import split_into_shorter_messages, logger, close_thread
 from src.moderation import (
     send_moderation_flagged_message,
     send_moderation_blocked_message,
@@ -37,34 +37,35 @@ class CompletionData:
 
 
 async def generate_completion_response(
-    messages: List[Message], user: str
+        messages: List[Message], user: discord.Member | discord.User
 ) -> CompletionData:
     try:
-        print("generate_completion")
         prompt = Prompt(
             header=Message(
-                "System", f"Instructions for {MY_BOT_NAME}: {BOT_INSTRUCTIONS}"
+                "System", BOT_INSTRUCTIONS
             ),
-            examples=MY_BOT_EXAMPLE_CONVOS,
             convo=Conversation(messages + [Message(MY_BOT_NAME)]),
         )
-        logger.debug("render prompt")
         rendered = prompt.render()
-        logger.debug("create completion")
+        max_tokens = 4000 - len(rendered)
+        if max_tokens > 1800:
+            max_tokens = 1800
+
+        if max_tokens < 0:
+            return CompletionData(CompletionResult.TOO_LONG, None, "Cannot process further commands in this thread.")
         response = openai.Completion.create(
-            engine="text-davinci-001",
+            engine="text-davinci-003",
             prompt=rendered,
             temperature=0.9,
-            max_tokens=512,
+            max_tokens=max_tokens,
             n=1,
-            user=user,
+            user=user.name,
             stop=["<|endoftext|>"],
         )
-        logger.debug("response")
         reply = response.choices[0].text.strip()
         if reply:
             flagged_str, blocked_str = moderate_message(
-                message=(rendered + reply)[-500:], user=user
+                message=(rendered + reply)[-500:], user=user.name
             )
             if len(blocked_str) > 0:
                 return CompletionData(
@@ -86,7 +87,7 @@ async def generate_completion_response(
     except openai.error.InvalidRequestError as e:
         if "This model's maximum context length" in e.user_message:
             return CompletionData(
-                status=CompletionResult.TOO_LONG, reply_text=None, status_text=str(e)
+                status=CompletionResult.TOO_LONG, reply_text=e.user_message, status_text=str(e)
             )
         else:
             logger.exception(e)
@@ -103,15 +104,15 @@ async def generate_completion_response(
 
 
 async def process_response(
-    user: str, thread: discord.Thread, response_data: CompletionData
+        user: str, thread: discord.Thread, response_data: CompletionData
 ):
+    global sent_message
     status = response_data.status
     reply_text = response_data.reply_text
     status_text = response_data.status_text
-    if status is CompletionResult.OK or status is CompletionResult.MODERATION_FLAGGED:
-        sent_message = None
+    if status is CompletionResult.OK:
         if not reply_text:
-            sent_message = await thread.send(
+            await thread.send(
                 embed=discord.Embed(
                     description=f"**Invalid response** - empty response",
                     color=discord.Color.yellow(),
@@ -143,19 +144,11 @@ async def process_response(
             blocked_str=status_text,
             message=reply_text,
         )
-        print('send')
 
         await thread.send(
             embed=discord.Embed(
                 description=f"❌ **The response has been blocked by moderation.**",
                 color=discord.Color.red(),
-            )
-        )
-    elif status is CompletionResult.TOO_LONG:
-        await thread.send(
-            embed=discord.Embed(
-                description="The response length is too much.",
-                color=discord.Color.yellow()
             )
         )
     elif status is CompletionResult.INVALID_REQUEST:
@@ -165,6 +158,14 @@ async def process_response(
                 color=discord.Color.yellow(),
             )
         )
+    elif status is CompletionResult.TOO_LONG:
+        await thread.send(
+            embed=discord.Embed(
+                description=f"**Error** - {status_text}",
+                color=discord.Color.yellow(),
+            )
+        )
+        await close_thread(thread)
     else:
         await thread.send(
             embed=discord.Embed(

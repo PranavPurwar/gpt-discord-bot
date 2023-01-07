@@ -1,4 +1,5 @@
 import discord
+import openai.error
 from discord import Message as DiscordMessage
 import logging
 from src.base import Message, Conversation
@@ -19,7 +20,7 @@ from src.utils import (
     discord_message_to_message,
 )
 from src import completion
-from src.completion import generate_completion_response, process_response
+from src.completion import generate_completion_response, process_response, CompletionResult
 from src.moderation import (
     moderate_message,
     send_moderation_blocked_message,
@@ -120,15 +121,13 @@ async def chat_command(interaction: discord.Interaction, message: str):
         # create the thread
         thread = await response.create_thread(
             name=f"{ACTIVATE_THREAD_PREFIX} {user.name[:20]} - {message[:30]}",
-            slowmode_delay=1,
             reason="gpt-bot",
-            auto_archive_duration=60,
         )
         async with thread.typing():
             # fetch completion
             messages = [Message(user=user.name, text=message)]
             response_data = await generate_completion_response(
-                messages=messages, user=user.name
+                messages=messages, user=user
             )
             # send the result
             await process_response(
@@ -243,13 +242,19 @@ async def on_message(message: DiscordMessage):
         # generate the response
         async with thread.typing():
             response_data = await generate_completion_response(
-                messages=channel_messages, user=message.author.name
+                messages=channel_messages, user=message.author
             )
-
-        await process_response(
-            user=message.author, thread=thread, response_data=response_data
-        )
-
+            if is_last_message_stale(
+                    interaction_message=message,
+                    last_message=thread.last_message,
+                    bot_id=str(client.user.id),
+            ):
+                # there is another message and its not from us, so ignore this response
+                return
+            print(message.channel)
+            await process_response(
+                message.author.name, thread, response_data
+            )
 
     except Exception as e:
         logger.exception(e)
