@@ -51,6 +51,18 @@ async def generate_completion_response(
         if max_tokens > 1800:
             max_tokens = 1800
 
+        if max_tokens < 0 and len(messages) > 5:
+            index = int(len(messages) / 2)
+            messages = messages[index:]
+            prompt = Prompt(
+                header=Message(
+                    "System", BOT_INSTRUCTIONS
+                ),
+                convo=Conversation(messages + [Message(MY_BOT_NAME)]),
+            )
+            rendered = prompt.render()
+            max_tokens = len(rendered)
+
         if max_tokens < 0:
             return CompletionData(CompletionResult.TOO_LONG, None, "Cannot process further commands in this thread.")
         response = openai.Completion.create(
