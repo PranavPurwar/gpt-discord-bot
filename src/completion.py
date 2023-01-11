@@ -50,7 +50,6 @@ async def generate_completion_response(
         max_tokens = 4000 - len(rendered)
         if max_tokens > 1800:
             max_tokens = 1800
-
         if max_tokens < 0 and len(messages) > 5:
             index = int(len(messages) / 2)
             messages = messages[index:]
