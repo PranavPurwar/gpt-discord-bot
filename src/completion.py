@@ -37,7 +37,7 @@ class CompletionData:
 
 
 async def generate_completion_response(
-        messages: List[Message], user: discord.Member | discord.User
+        messages: List[Message], user: discord.Member
 ) -> CompletionData:
     try:
         prompt = Prompt(

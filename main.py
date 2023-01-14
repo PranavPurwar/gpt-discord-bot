@@ -1,19 +1,27 @@
+import asyncio
+import logging
 import threading
 
 import discord
-import openai.error
 from discord import Message as DiscordMessage
-import logging
+from discord.ext import commands
+from flask import Flask
+
+from src import completion
 from src.base import Message, Conversation
+from src.completion import generate_completion_response, process_response
 from src.constants import (
     BOT_INVITE_URL,
     DISCORD_BOT_TOKEN,
-    EXAMPLE_CONVOS,
     ACTIVATE_THREAD_PREFIX,
     MAX_THREAD_MESSAGES,
     SECONDS_DELAY_RECEIVING_MSG,
 )
-import asyncio
+from src.moderation import (
+    moderate_message,
+    send_moderation_blocked_message,
+    send_moderation_flagged_message,
+)
 from src.utils import (
     logger,
     should_block,
@@ -21,14 +29,6 @@ from src.utils import (
     is_last_message_stale,
     discord_message_to_message,
 )
-from src import completion
-from src.completion import generate_completion_response, process_response, CompletionResult
-from src.moderation import (
-    moderate_message,
-    send_moderation_blocked_message,
-    send_moderation_flagged_message,
-)
-from flask import Flask
 
 app = Flask(__name__)
 
@@ -53,16 +53,25 @@ tree = discord.app_commands.CommandTree(client)
 async def on_ready():
     logger.info(f"We have logged in as {client.user}. Invite URL: {BOT_INVITE_URL}")
     completion.MY_BOT_NAME = client.user.name
-    completion.MY_BOT_EXAMPLE_CONVOS = []
-    for c in EXAMPLE_CONVOS:
-        messages = []
-        for m in c.messages:
-            if m.user == "Lenard":
-                messages.append(Message(user=client.user.name, text=m.text))
-            else:
-                messages.append(m)
-        completion.MY_BOT_EXAMPLE_CONVOS.append(Conversation(messages=messages))
     await tree.sync()
+
+
+def is_me(interaction):
+    return interaction.user.id == "879984855830659073"
+
+
+@tree.command(name="delete", description="Delete a message")
+@commands.check(is_me)
+async def delete_command(interaction: discord.Interaction, message_id: str):
+    message = await interaction.channel.fetch_message(message_id)
+    await message.delete()
+    await interaction.response.send_message(
+        embed=discord.Embed(
+            description="Message deleted",
+            color=discord.Color.red(),
+        ),
+        ephemeral=True,
+    )
 
 
 # /chat message:
