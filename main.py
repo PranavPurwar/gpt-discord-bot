@@ -28,6 +28,7 @@ from src.utils import (
     close_thread,
     is_last_message_stale,
     discord_message_to_message,
+    split_into_shorter_messages,
 )
 
 app = Flask(__name__)
@@ -74,6 +75,48 @@ async def delete_command(interaction: discord.Interaction, message_id: str):
     )
 
 
+# /ask message:
+@tree.command(name="ask", description="Replies a single message")
+@discord.app_commands.checks.has_permissions(send_messages=True)
+@discord.app_commands.checks.has_permissions(view_channel=True)
+@discord.app_commands.checks.bot_has_permissions(send_messages=True)
+@discord.app_commands.checks.bot_has_permissions(view_channel=True)
+async def ask_command(interaction: discord.Interaction, message: str):
+    try:
+        # only support creating thread in text channel
+        if not isinstance(interaction.channel, discord.TextChannel):
+            return
+
+        # block servers not in allow list
+        if should_block(guild=interaction.guild):
+            return
+
+        user = interaction.user
+        logger.debug(f"Chat command by {user} {message[:20]}")
+
+        await interaction.response.defer(thinking=True)
+
+        # fetch completion
+        messages = [Message(user=user.name, text=message)]
+        response_data = await generate_completion_response(
+            messages=messages, user=user
+        )
+
+        # attach the question
+        reply_message = f"> {message}\n\n" + response_data.reply_text
+
+        # send the result
+        shorter_response = split_into_shorter_messages(
+            reply_message)
+        for r in shorter_response:
+            await interaction.followup.send(r)
+
+    except Exception as e:
+        logger.exception(e)
+        await interaction.response.send_message(
+            f"Failed to reply. {str(e)}", ephemeral=True
+        )
+
 # /chat message:
 @tree.command(name="chat", description="Create a new thread for conversation")
 @discord.app_commands.checks.has_permissions(send_messages=True)
@@ -95,7 +138,8 @@ async def chat_command(interaction: discord.Interaction, message: str):
         logger.debug(f"Chat command by {user} {message[:20]}")
         try:
             # moderate the message
-            flagged_str, blocked_str = moderate_message(message=message, user=user.name)
+            flagged_str, blocked_str = moderate_message(
+                message=message, user=user.name)
             await send_moderation_blocked_message(
                 guild=interaction.guild,
                 user=user.name,
