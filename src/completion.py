@@ -47,12 +47,10 @@ async def generate_completion_response(
             convo=Conversation(messages + [Message(MY_BOT_NAME)]),
         )
         rendered = prompt.render()
+        global max_tokens
         max_tokens = 4000 - len(rendered)
-        if max_tokens > 1800:
-            max_tokens = 1800
-        if max_tokens < 0 and len(messages) > 5:
-            index = int(len(messages) / 2)
-            messages = messages[index:]
+        while max_tokens < 0 and len(messages) > 1:
+            messages = messages[1:]
             prompt = Prompt(
                 header=Message(
                     "System", BOT_INSTRUCTIONS
@@ -60,10 +58,9 @@ async def generate_completion_response(
                 convo=Conversation(messages + [Message(MY_BOT_NAME)]),
             )
             rendered = prompt.render()
-            max_tokens = len(rendered)
+            max_tokens = 4000 - len(rendered)
 
-        if max_tokens < 0:
-            return CompletionData(CompletionResult.TOO_LONG, None, "Cannot process further commands in this thread.")
+
         response = openai.Completion.create(
             engine="text-davinci-003",
             prompt=rendered,
