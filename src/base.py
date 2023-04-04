@@ -33,18 +33,15 @@ class Conversation:
 @dataclass(frozen=True)
 class Config:
     name: str
-    instructions: str
     example_conversations: List[Conversation]
 
 
 @dataclass(frozen=True)
 class Prompt:
-    header: Message
     convo: Conversation
 
     def render(self):
         return f"\n{SEPARATOR_TOKEN}".join(
-            [self.header.render()]
-            + [Message("System", "Current conversation:").render()]
+            [Message("System", "Current conversation:").render()]
             + [self.convo.render()],
         )

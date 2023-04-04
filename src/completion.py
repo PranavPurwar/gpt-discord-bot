@@ -4,7 +4,6 @@ import openai
 from src.moderation import moderate_message
 from typing import Optional, List
 from src.constants import (
-    BOT_INSTRUCTIONS,
     BOT_NAME,
     EXAMPLE_CONVOS,
 )
@@ -41,9 +40,6 @@ async def generate_completion_response(
 ) -> CompletionData:
     try:
         prompt = Prompt(
-            header=Message(
-                "System", BOT_INSTRUCTIONS
-            ),
             convo=Conversation(messages + [Message(MY_BOT_NAME)]),
         )
         rendered = prompt.render()
@@ -52,9 +48,6 @@ async def generate_completion_response(
         while max_tokens < 0 and len(messages) > 1:
             messages = messages[1:]
             prompt = Prompt(
-                header=Message(
-                    "System", BOT_INSTRUCTIONS
-                ),
                 convo=Conversation(messages + [Message(MY_BOT_NAME)]),
             )
             rendered = prompt.render()
