@@ -3,17 +3,23 @@ from typing import Optional, List
 
 SEPARATOR_TOKEN = "<|endoftext|>"
 
-
 @dataclass(frozen=True)
 class Message:
     user: str
     text: Optional[str] = None
 
     def render(self):
-        result = self.user + ":"
-        if self.text is not None:
-            result += " " + self.text
-        return result
+        if (self.text is None):
+            return {}
+        global role
+        if (self.user == "GPT"):
+            role = "assistant"
+        else:
+            role = "user"
+        return {
+            "role": role,
+            "content": self.text
+        }
 
 
 @dataclass
@@ -25,9 +31,14 @@ class Conversation:
         return self
 
     def render(self):
-        return f"\n{SEPARATOR_TOKEN}".join(
-            [message.render() for message in self.messages]
-        )
+        list = []
+        list.append({
+          "role": "system",
+          "content": "You are a user on discord"
+        })
+        for message in self.messages:
+            list.append(message.render())
+        return list
 
 
 @dataclass(frozen=True)
@@ -41,7 +52,4 @@ class Prompt:
     convo: Conversation
 
     def render(self):
-        return f"\n{SEPARATOR_TOKEN}".join(
-            [Message("System", "Current conversation:").render()]
-            + [self.convo.render()],
-        )
+        return self.convo.render()

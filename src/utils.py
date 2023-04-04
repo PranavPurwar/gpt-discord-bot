@@ -61,7 +61,7 @@ async def close_thread(thread: discord.Thread):
 def should_block(guild: Optional[discord.Guild]) -> bool:
     if guild is None:
         # DM's not supported
-        logger.info(f"DM ain't allowed")
+        logger.info("DM ain't allowed")
         return True
 
     if guild.id and guild.id not in ALLOWED_SERVER_IDS:

@@ -1,4 +1,4 @@
-vnsbznzbvnvbbxbvznnnslnsvcnsnvdcvxxxxxxmmxxmxxmxmxmmmmmmxmnxxncnmxxxmxxmmxmnmxmxmmmmmmxxnmmmxccmmmnnmxmmmmxmnxmmmmmxxnmmmmmmmmmmnmnncnxmmxxmn it jhohhohh mm h import asyncio
+import asyncio
 import logging
 import threading
 
@@ -183,7 +183,7 @@ async def chat_command(interaction: discord.Interaction, message: str):
     # create the thread
     thread = await response.create_thread(
       name=f"{ACTIVATE_THREAD_PREFIX} {user.name[:20]} - {message[:30]}",
-      reason="gpt-bot",
+      reason="ChatGPT",
     )
     async with thread.typing():
       # fetch completion
